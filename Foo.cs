@@ -9,12 +9,17 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using SignalFx.Tracing.OpenTracing;
+using OpenTracing.Propagation;
+//using OpenTracing.Util;
+using System.Collections.Generic;
 
 
 namespace Shabuhabs.Function
 {
     public static class Foo
     {
+
+
 
          // All configurations for the SignalFxTracer are being captured from environment
         // variables defined in local.settings.json. This static is just used to trigger
@@ -30,31 +35,47 @@ namespace Shabuhabs.Function
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-             OpenTracing.ITracer tracer = SignalFxTracer;
-            using var scope = tracer.BuildSpan("HttpTrigger").StartActive();
-            
-            log.LogInformation("C# HTTP trigger function processed a request.");
 
+            OpenTracing.ITracer tracer = SignalFxTracer;
+           
+            var startTime = DateTimeOffset.Now;
+            
+            var headerDictionary = new Dictionary<string, string>();
+            var headerKeys =req.Headers.Keys;
+            foreach (var headerKey in headerKeys)
+            {
+                string headerValue = req.Headers[headerKey];
+                headerDictionary.Add(headerKey, headerValue);
+            }
+
+        
+            OpenTracing.ISpanBuilder spanBuilder = tracer.BuildSpan($"{req.Method} {req.HttpContext.Request.Path}");
+            var requestContext = tracer.Extract(BuiltinFormats.HttpHeaders, new TextMapExtractAdapter(headerDictionary));
+            using var scope = spanBuilder
+                            .AsChildOf(requestContext)
+                            .WithStartTimestamp(startTime)
+                            .WithTag("span.kind", "server")
+                            .StartActive();
+            
             string name = req.Query["name"];
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            name ??= data?.name;
+         
+            log.LogInformation("C# HTTP trigger function processed a request.");
 
-            scope.Span.SetTag("span.kind", "server");
             scope.Span.SetTag("query.name", name ?? "<null>");
-            scope.Span.SetTag("http.method", req.Method);
 
             string responseMessage = string.IsNullOrEmpty(name)
                 ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
                 : $"Hello, {name}. This HTTP triggered function executed successfully.";
             
-          ObjectResult result = null;
+            ObjectResult result = null;
             try
             {
                 if (name == "crash")
                 {
-                   
                    throw new ArgumentException("CRASHED, 'crash' is invalid arg!");
                 }
 
@@ -72,6 +93,7 @@ namespace Shabuhabs.Function
                 scope.Span.SetTag("error", true);
             }
 
+            scope.Span.Finish();
             return result;
 
         }
