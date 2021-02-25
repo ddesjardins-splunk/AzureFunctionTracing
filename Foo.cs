@@ -30,6 +30,8 @@ namespace Shabuhabs.Function
             SignalFx.Tracing.Tracer.Instance
         );
 
+       
+        
         [FunctionName("Foo")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
@@ -37,7 +39,8 @@ namespace Shabuhabs.Function
         {
 
             OpenTracing.ITracer tracer = SignalFxTracer;
-           
+            log.LogInformation($" tracer= {tracer.ToString()}");
+            
             var startTime = DateTimeOffset.Now;
             
             var headerDictionary = new Dictionary<string, string>();
@@ -45,12 +48,16 @@ namespace Shabuhabs.Function
             foreach (var headerKey in headerKeys)
             {
                 string headerValue = req.Headers[headerKey];
+                
+                log.LogInformation($" header: {headerKey} ,  {headerValue}");
                 headerDictionary.Add(headerKey, headerValue);
+            
             }
 
         
             OpenTracing.ISpanBuilder spanBuilder = tracer.BuildSpan($"{req.Method} {req.HttpContext.Request.Path}");
             var requestContext = tracer.Extract(BuiltinFormats.HttpHeaders, new TextMapExtractAdapter(headerDictionary));
+            log.LogInformation(requestContext.ToString());
             using var scope = spanBuilder
                             .AsChildOf(requestContext)
                             .WithStartTimestamp(startTime)
