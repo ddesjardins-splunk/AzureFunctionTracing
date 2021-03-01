@@ -8,61 +8,33 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using SignalFx.Tracing.OpenTracing;
-using OpenTracing.Propagation;
-//using OpenTracing.Util;
 using System.Collections.Generic;
+using System.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Resources;
 
 
-namespace Shabuhabs.Function
+namespace Shabuhabs.AzureFunctions
 {
     public static class Foo
     {
 
+         private static readonly ActivitySource MyActivitySource = new ActivitySource("Shabuhabs.AzureFunctions");
 
 
-         // All configurations for the SignalFxTracer are being captured from environment
-        // variables defined in local.settings.json. This static is just used to trigger
-        // its initialization. It is recommended that the instance is used in order to
-        // avoid its initialization to be optimized away (which will result in the
-        // OpenTracing.Util.GlobalTracer.Instance being a no-op ITracer).
-        private static readonly OpenTracing.ITracer SignalFxTracer = OpenTracingTracerFactory.WrapTracer(
-            SignalFx.Tracing.Tracer.Instance
-        );
-
-       
-        
         [FunctionName("Foo")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
 
-            OpenTracing.ITracer tracer = SignalFxTracer;
-            log.LogInformation($" tracer= {tracer.ToString()}");
-            
+        using (var activity = MyActivitySource.StartActivity("Foo"))
+        {
+            activity?.SetTag("span.kind", "SERVER");
+            activity?.SetTag("Foo-Fun", "OT .NET Rocks!");
+        }
             var startTime = DateTimeOffset.Now;
-            
-            var headerDictionary = new Dictionary<string, string>();
-            var headerKeys =req.Headers.Keys;
-            foreach (var headerKey in headerKeys)
-            {
-                string headerValue = req.Headers[headerKey];
-                
-                log.LogInformation($" header: {headerKey} ,  {headerValue}");
-                headerDictionary.Add(headerKey, headerValue);
-            
-            }
-
-        
-            OpenTracing.ISpanBuilder spanBuilder = tracer.BuildSpan($"{req.Method} {req.HttpContext.Request.Path}");
-            var requestContext = tracer.Extract(BuiltinFormats.HttpHeaders, new TextMapExtractAdapter(headerDictionary));
-            log.LogInformation(requestContext.ToString());
-            using var scope = spanBuilder
-                            .AsChildOf(requestContext)
-                            .WithStartTimestamp(startTime)
-                            .WithTag("span.kind", "server")
-                            .StartActive();
             
             string name = req.Query["name"];
 
@@ -72,7 +44,7 @@ namespace Shabuhabs.Function
          
             log.LogInformation("C# HTTP trigger function processed a request.");
 
-            scope.Span.SetTag("query.name", name ?? "<null>");
+          //  scope.Span.SetTag("query.name", name ?? "<null>");
 
             string responseMessage = string.IsNullOrEmpty(name)
                 ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
@@ -91,16 +63,16 @@ namespace Shabuhabs.Function
             catch (Exception e)
             {
                 result = new ExceptionResult(e, includeErrorDetail: true);
-                scope.Span.SetTag("error.message", e.Message);
+              //  scope.Span.SetTag("error.message", e.Message);
                 throw;
             }
             finally
             {
-                scope.Span.SetTag("http.status_code", result?.StatusCode ?? 500);
-                scope.Span.SetTag("error", true);
+               // scope.Span.SetTag("http.status_code", result?.StatusCode ?? 500);
+              //  scope.Span.SetTag("error", true);
             }
 
-            scope.Span.Finish();
+           // scope.Span.Finish();
             return result;
 
         }

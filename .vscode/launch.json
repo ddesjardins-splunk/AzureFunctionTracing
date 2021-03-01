@@ -5,7 +5,9 @@
             "name": "Attach to .NET Functions",
             "type": "coreclr",
             "request": "attach",
+            "logging": {verbose},
             "processId": "${command:azureFunctions.pickProcess}"
         }
+        
     ]
 }

@@ -1,0 +1,111 @@
+
+
+using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Context.Propagation;
+using System;
+using Grpc.Core;
+using System.Diagnostics;
+
+
+
+[assembly: FunctionsStartup(typeof(Shabuhabs.AzureFunctions.Startup))]
+
+namespace Shabuhabs.AzureFunctions
+{
+    public class Startup : FunctionsStartup
+    {
+        public override void Configure(IFunctionsHostBuilder builder)
+        {
+
+          AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+            var openTelemetry =  Sdk.CreateTracerProviderBuilder()
+                .AddSource("Shabuhabs.AzureFunctions")
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("Foo"))
+                .AddConsoleExporter()
+                .Build();
+            builder.Services.AddSingleton(openTelemetry);
+        }
+    }
+    
+}
+
+/*
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+            var openTelemetry =  Sdk.CreateTracerProviderBuilder()
+                .AddSource("Shabuhabs.AzureFunctions")
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("Foo"))
+                //.AddConsoleExporter()
+                .AddOtlpExporter(opt => {
+                        opt.Endpoint = new System.Uri("http://192.168.0.110:55681/v1/traces");
+                        opt.ExportProcessorType = ExportProcessorType.Simple;
+                        //opt.Headers = "X-SF-TOKEN=WH8RxYYkZrSzyYF803n8PQ"; 
+                    })
+              
+                //.AddJaegerExporter(o =>
+                //    {
+                //        o.AgentHost = "192.168.0.110";
+                //        o.AgentPort = 6831;
+                 //   })
+                
+                .Build();
+       */       
+
+
+
+
+// Switch between Zipkin/Jaeger by setting UseExporter in appsettings.json.
+        //var exporter = this.Configuration.GetValue<string>("UseExporter").ToLowerInvariant();
+ /*           switch (exporter)
+            {
+                case "jaeger":
+                    
+                    .AddOpenTelemetryTracing((builder) => builder
+                        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(this.Configuration.GetValue<string>("Jaeger:ServiceName")))
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddJaegerExporter(jaegerOptions =>
+                        {
+                            jaegerOptions.AgentHost = this.Configuration.GetValue<string>("Jaeger:Host");
+                            jaegerOptions.AgentPort = this.Configuration.GetValue<int>("Jaeger:Port");
+                        }));
+                    break;
+                case "zipkin":
+                    services.AddOpenTelemetryTracing((builder) => builder
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddZipkinExporter(zipkinOptions =>
+                        {
+                            zipkinOptions.Endpoint = new Uri(this.Configuration.GetValue<string>("Zipkin:Endpoint"));
+                        }));
+                    break;
+                case "otlp":
+                    // Adding the OtlpExporter creates a GrpcChannel.
+                    // This switch must be set before creating a GrpcChannel/HttpClient when calling an insecure gRPC service.
+                    // See: https://docs.microsoft.com/aspnet/core/grpc/troubleshoot#call-insecure-grpc-services-with-net-core-client
+                    AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+                    services.AddOpenTelemetryTracing((builder) => builder
+                        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(this.Configuration.GetValue<string>("Otlp:ServiceName")))
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddOtlpExporter(otlpOptions =>
+                        {
+                            otlpOptions.Endpoint = new Uri(this.Configuration.GetValue<string>("Otlp:Endpoint"));
+                        }));
+                    break;
+                default:
+                    services.AddOpenTelemetryTracing((builder) => builder
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddConsoleExporter());
+                    break;
+            }
+            builder.Services.AddSingleton(openTelemetry);
+        */
