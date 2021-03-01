@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Diagnostics;
-
-
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Shabuhabs.AzureFunctions
 {
@@ -26,9 +26,22 @@ namespace Shabuhabs.AzureFunctions
             ILogger log)
         {
             ObjectResult result = null;
-            using (var activity = My)
-//            using (var activity = MyActivitySource.StartActivity("Foo"))
+            
+             var headerDictionary = new Dictionary<string, string>();
+            var headerKeys =req.Headers.Keys;
+            foreach (var headerKey in headerKeys)
             {
+                string headerValue = req.Headers[headerKey];
+                
+                //log.LogInformation($" header: {headerKey} ,  {headerValue}");
+                Console.WriteLine($" header: {headerKey} ,  {headerValue}");
+                headerDictionary.Add(headerKey, headerValue);
+            }
+
+            using (var activity = MyActivitySource.StartActivity("Foo"))
+            {
+                //activity?.SetParentId(req.Headers["X-B3-TraceId"]);
+                //activity?.Set(req.Headers["X-B3-SpanId"]);
                 activity?.SetTag("span.kind", "SERVER");
                 activity?.SetTag("enviroment", "Shabuhabs.AzureFunctions-central-sub1");
                 activity?.SetTag("Foo-Fun", "OT .NET Rocks!");
