@@ -27,15 +27,39 @@ namespace Shabuhabs.AzureFunctions
             ILogger log)
         {
             ObjectResult result = null;
-        
+          /*  
+             var headerDictionary = new Dictionary<string, string>();
+            var headerKeys =req.Headers.Keys;
+            foreach (var headerKey in headerKeys)
+            {
+                string headerValue = req.Headers[headerKey];
+                // "X-B3-TraceId"
+                //log.LogInformation($" header: {headerKey} ,  {headerValue}");
+                Console.WriteLine($" header: {headerKey} ,  {headerValue}");
+                headerDictionary.Add(headerKey, headerValue);
+            }
+            */
+            /*
+            if(null != Activity.Current )
+            {
+                Console.WriteLine( "DO WE HAVE CURRENT ACTIVITY???? : its > " + Activity.Current.ToString());
+            }
+            */
             using (var activity = MyActivitySource.StartActivity("Foo", ActivityKind.Server, req.Headers["traceparent"] ))
             {
+                //Console.WriteLine("Parentid is"  + activity.ParentId??  "<Null>");
+               // Console.WriteLine("Parent SPAN ID is"  + activity.ParentSpanId??  "<Null>");
                 if (activity.ParentId != null) 
                 {
                     
                     Console.WriteLine("Parentid is" + activity.ParentId);
                 }
-             
+               /* foreach (var pair in req.Headers["Correlation-Context"])
+                {
+                    var baggageItem = NameValueHeaderValue.Parse(pair);
+                    activity.AddBaggage(baggageItem.Name, baggageItem.Value);
+                }
+*/
                 activity?.SetTag("enviroment", "Shabuhabs.AzureFunctions-central-sub1");
                 activity?.SetTag("Fooz-Functionz", "OTel .NET Rocks!");
             
